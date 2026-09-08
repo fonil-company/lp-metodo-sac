@@ -1,0 +1,11 @@
+.git
+.gitignore
+node_modules
+dist
+test-results
+.playwright
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+npm-debug.log*
