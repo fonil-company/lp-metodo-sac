@@ -4,7 +4,7 @@ import { extname, join, normalize, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(fileURLToPath(new URL('../dist', import.meta.url)));
-const port = Number.parseInt(process.env.PORT || '3000', 10);
+const port = Number.parseInt(process.env.PORT || '4173', 10);
 const host = process.env.HOST || '0.0.0.0';
 
 if (!Number.isInteger(port) || port < 1 || port > 65535) {
