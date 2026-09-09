@@ -1,16 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Check, CheckCheck, Clock3, Download, LockKeyhole, RotateCcw, ShieldCheck, LoaderCircle } from 'lucide-react';
 import { steps, type Question } from './diagnostic-data';
-import { STORAGE_KEY, formatPhone, validateContact, normalizePhone, sanitizeAnswers, attributionFrom, submitLead } from './lib/diagnostic.mjs';
+import { STORAGE_KEY, formatPhone, validateContact, normalizePhone, sanitizeAnswers, attributionFrom, leadWebhookPayload, submitLead } from './lib/diagnostic.mjs';
 import { track } from './lib/tracking';
 
 type Answers = Record<string, string>;
 type Contact = { name: string; company: string; phone: string; email: string; city: string; state: string };
 const emptyContact: Contact = { name: '', company: '', phone: '', email: '', city: '', state: '' };
 const states = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
-const endpoint = import.meta.env.VITE_LEAD_ENDPOINT?.trim();
+const endpoint = '/api/leads';
 const privacyUrl = import.meta.env.VITE_PRIVACY_URL?.trim();
-const live = Boolean(endpoint && privacyUrl);
+const live = Boolean(endpoint);
 function restore() {
   try {
     const saved = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || 'null');
@@ -101,7 +101,7 @@ export default function Diagnostic() {
     setBusy(true);
     try {
       if (live) {
-        await submitLead(endpoint, payload);
+        await submitLead(endpoint, leadWebhookPayload(payload.contact));
         track('diagnostic_submit', { event_id: payload.event_id, profile: answers.profile, segment: answers.segment, revenue: answers.revenue, representatives: answers.representatives, authority: answers.authority, timing: answers.timing });
       }
       setSubmission(payload); setDone(true);
@@ -176,7 +176,7 @@ export default function Diagnostic() {
                 </label>)}
                 <label className="contact-field"><span>Estado</span><select aria-label="Estado" name="state" autoComplete="address-level1" value={contact.state} onChange={event => { setContact(previous => ({ ...previous, state: event.target.value })); setErrors(previous => ({ ...previous, state: '' })); }} aria-invalid={Boolean(errors.state)} aria-describedby={errors.state ? 'state-error' : undefined}><option value="">Selecione</option>{states.map(state => <option key={state}>{state}</option>)}</select>{errors.state && <span className="field-error" id="state-error" role="alert">{errors.state}</span>}</label>
               </div>
-              {live && <label className="consent-field"><input type="checkbox" checked={consent} onChange={event => setConsent(event.target.checked)} aria-invalid={Boolean(errors.consent)} /><span>Autorizo o uso dos dados para análise da operação e contato pela equipe, conforme a <a href={privacyUrl} target="_blank" rel="noreferrer">Política de Privacidade</a>.</span></label>}
+              {live && <label className="consent-field"><input type="checkbox" checked={consent} onChange={event => setConsent(event.target.checked)} aria-invalid={Boolean(errors.consent)} /><span>Autorizo o uso dos dados para análise da operação e contato pela equipe{privacyUrl ? <>, conforme a <a href={privacyUrl} target="_blank" rel="noreferrer">Política de Privacidade</a></> : '.'}</span></label>}
               {errors.consent && <p role="alert" className="field-error">{errors.consent}</p>}
               {errors.submit && <p role="alert" className="field-error submit-error">{errors.submit}</p>}
             </>}

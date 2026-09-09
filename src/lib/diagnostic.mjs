@@ -35,13 +35,26 @@ export function attributionFrom(search) {
   const params = new URLSearchParams(search);
   return Object.fromEntries(['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'fbclid', 'gclid', 'ad_id', 'creative_id'].filter(key => params.has(key)).map(key => [key, params.get(key)]));
 }
+export function leadWebhookPayload(contact) {
+  return {
+    phone: normalizePhone(contact.phone || ''),
+    name: contact.name?.trim() || '',
+    email: contact.email?.trim() || '',
+    city: contact.city?.trim() || '',
+    state: contact.state?.trim() || '',
+  };
+}
 export async function submitLead(endpoint, payload, fetcher = fetch) {
   const response = await fetcher(endpoint, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload), signal: AbortSignal.timeout(20000)
   });
   if (!response.ok) throw new Error('Não foi possível enviar. Suas respostas foram mantidas. Tente novamente.');
-  const receipt = await response.json();
-  if (receipt.success !== true) throw new Error('O recebimento não foi confirmado. Suas respostas foram mantidas. Tente novamente.');
+  let receipt = { success: true };
+  try {
+    const body = await response.text();
+    if (body) receipt = JSON.parse(body);
+  } catch { /* A resposta 2xx do webhook é a confirmação de recebimento. */ }
+  if (receipt?.success === false) throw new Error('O recebimento não foi confirmado. Suas respostas foram mantidas. Tente novamente.');
   return receipt;
 }

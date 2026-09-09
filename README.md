@@ -25,21 +25,11 @@ Acesse http://localhost:5173. Para gerar a versão estática: `npm run build`. O
 
 ## Integração de leads
 
-Copie `.env.example` para `.env.local` e defina as variáveis públicas necessárias. Recompile após mudanças.
+Copie `.env.example` para `.env.local` apenas se precisar configurar as URLs de privacidade/termos ou o número oficial de WhatsApp. Recompile após mudanças.
 
-O envio real só é habilitado quando `VITE_LEAD_ENDPOINT` **e** `VITE_PRIVACY_URL` estão configurados. Até lá, o diagnóstico funciona em modo de apresentação: ao concluir, informa que nada foi enviado e oferece download JSON das respostas.
+O formulário envia os leads ao webhook do CRM da Fonil Group por meio do proxy de mesma origem em `/api/leads`, evitando bloqueios de CORS no navegador. O POST JSON segue o contrato do endpoint com `phone`, `name`, `email`, `city` e `state`. O telefone é normalizado com DDI antes do envio; a deduplicação e o enriquecimento por telefone são realizados pelo CRM.
 
-O endpoint recebe POST JSON com:
-
-- `schema_version`, `event_id`, `created_at`, `source`;
-- `answers`: perfil, segmento, faturamento, colaboradores, estrutura comercial, representantes, origem, novos clientes, gargalo, autodiagnóstico, infraestrutura, CRM quando aplicável, autoridade, cargo, timing, budget, capacidade e objetivo;
-- `contact`: nome, empresa, WhatsApp normalizado, e-mail, cidade e estado;
-- `attribution`: UTMs, fbclid, gclid, ad_id e creative_id da URL;
-- `consent`: autorização de contato, URL da política e momento da autorização.
-
-O backend deve validar o payload, persistir o lead, deduplicar por `event_id`, aplicar rate limiting e configurar CORS para o domínio publicado. Deve retornar JSON `{"success": true}` **somente após persistir**. Erros, timeout ou resposta sem confirmação preservam as respostas e permitem nova tentativa com o mesmo ID. Credenciais de CRM devem ficar no servidor; nunca em variáveis `VITE_`.
-
-O evento `diagnostic_submit` só ocorre depois dessa confirmação. Não há integração externa ativa nem credenciais incluídas.
+As respostas detalhadas do diagnóstico, o nome da empresa e a atribuição de mídia não fazem parte do contrato desse webhook e, por isso, não são enviados como campos extras. O evento `diagnostic_submit` só ocorre depois de uma resposta HTTP bem-sucedida. Erros ou timeout preservam as respostas e permitem nova tentativa com o mesmo ID de evento local.
 
 ## Analytics
 
