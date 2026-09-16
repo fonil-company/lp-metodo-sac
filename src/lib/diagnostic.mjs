@@ -14,6 +14,11 @@ export function formatPhone(value) {
   const split = rest.length > 8 ? 5 : 4;
   return prefix + ') ' + rest.slice(0, split) + (rest.length > split ? '-' + rest.slice(split) : '');
 }
+export function formatInvestment(value) {
+  const digits = String(value || '').replace(/\D/g, '').slice(0, 12);
+  if (!digits) return '';
+  return 'R$ ' + Number(digits).toLocaleString('pt-BR');
+}
 /** @returns {Record<string, string>} */
 export function validateContact(contact) {
   const errors = {};
@@ -28,7 +33,8 @@ export function validateContact(contact) {
 }
 export function sanitizeAnswers(answers) {
   const result = { ...answers };
-  if (result.infrastructure !== 'CRM estruturado') delete result.crm;
+  for (const removedKey of ['bottleneck', 'infrastructure', 'crm', 'capacity', 'objective']) delete result[removedKey];
+  if (result.budget) result.budget = formatInvestment(result.budget);
   return result;
 }
 export function attributionFrom(search) {

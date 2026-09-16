@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Check, CheckCheck, Clock3, Download, LockKeyhole, RotateCcw, ShieldCheck, LoaderCircle } from 'lucide-react';
 import { steps, type Question } from './diagnostic-data';
-import { STORAGE_KEY, formatPhone, validateContact, normalizePhone, sanitizeAnswers, attributionFrom, leadWebhookPayload, submitLead } from './lib/diagnostic.mjs';
+import { STORAGE_KEY, formatPhone, formatInvestment, validateContact, normalizePhone, sanitizeAnswers, attributionFrom, leadWebhookPayload, submitLead } from './lib/diagnostic.mjs';
 import { track } from './lib/tracking';
 
 type Answers = Record<string, string>;
@@ -11,13 +11,15 @@ const states = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG'
 const endpoint = '/api/leads';
 const privacyUrl = import.meta.env.VITE_PRIVACY_URL?.trim();
 const live = Boolean(endpoint);
+const contactStep = steps.length;
+const totalSteps = contactStep + 1;
 function restore() {
   try {
     const saved = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || 'null');
     if (!saved || typeof saved !== 'object') return null;
     return {
-      step: Number.isInteger(saved.step) ? Math.max(0, Math.min(10, saved.step)) : 0,
-      answers: Object.fromEntries(Object.entries(saved.answers || {}).filter(([, value]) => typeof value === 'string')) as Answers,
+      step: Number.isInteger(saved.step) ? Math.max(0, Math.min(contactStep, saved.step)) : 0,
+      answers: sanitizeAnswers(Object.fromEntries(Object.entries(saved.answers || {}).filter(([, value]) => typeof value === 'string'))) as Answers,
       contact: Object.fromEntries(Object.keys(emptyContact).map(key => [key, typeof saved.contact?.[key] === 'string' ? saved.contact[key] : ''])) as Contact,
     };
   } catch { return null; }
@@ -38,8 +40,8 @@ export default function Diagnostic() {
   const milestones = useRef(new Set<number>());
   const eventId = useRef(crypto.randomUUID());
   const attribution = useRef(attributionFrom(window.location.search));
-  const questionStep = steps[step];
-  const progress = Math.round((step / 11) * 100);
+  const questionStep = steps[Math.min(step, contactStep - 1)];
+  const progress = Math.round((step / totalSteps) * 100);
 
   useEffect(() => {
     if (done) return;
@@ -58,7 +60,7 @@ export default function Diagnostic() {
   function goTo(next: number) {
     setStep(next); setErrors({});
     for (const milestone of [25, 50, 75]) {
-      if ((next / 11) * 100 >= milestone && !milestones.current.has(milestone)) {
+      if ((next / totalSteps) * 100 >= milestone && !milestones.current.has(milestone)) {
         track('diagnostic_step_' + milestone); milestones.current.add(milestone);
       }
     }
@@ -70,7 +72,6 @@ export default function Diagnostic() {
     questionStep.questions.forEach(question => {
       if (!question.optional && !answers[question.id]?.trim()) validation[question.id] = 'Responda esta pergunta para continuar.';
     });
-    if (step === 6 && answers.infrastructure === 'CRM estruturado' && !answers.crm?.trim()) validation.crm = 'Informe qual CRM sua empresa utiliza.';
     setErrors(validation);
     if (!Object.keys(validation).length) goTo(step + 1);
     else requestAnimationFrame(() => document.querySelector<HTMLElement>('#diagnostic-panel [aria-invalid="true"]')?.focus());
@@ -124,8 +125,7 @@ export default function Diagnostic() {
           </label>)}
         </div> :
         question.type === 'budget' ? <div className="budget-input">
-          <input aria-label={question.label} placeholder={question.placeholder} maxLength={120} value={answers.budget === 'O investimento dependerá do projeto e do retorno esperado' ? '' : answers.budget || ''} onChange={event => updateAnswer('budget', event.target.value)} aria-invalid={invalid} aria-describedby={invalid ? 'budget-error' : undefined} />
-          <button type="button" className={'budget-choice ' + (answers.budget === 'O investimento dependerá do projeto e do retorno esperado' ? 'selected' : '')} aria-pressed={answers.budget === 'O investimento dependerá do projeto e do retorno esperado'} onClick={() => updateAnswer('budget', 'O investimento dependerá do projeto e do retorno esperado')}><span className="radio-mark">{answers.budget === 'O investimento dependerá do projeto e do retorno esperado' && <Check size={11} />}</span>O investimento dependerá do projeto e do retorno esperado</button>
+          <input aria-label={question.label} placeholder={question.placeholder} inputMode="numeric" autoComplete="off" maxLength={18} value={answers.budget || ''} onChange={event => updateAnswer('budget', formatInvestment(event.target.value))} aria-invalid={invalid} aria-describedby={invalid ? 'budget-error' : undefined} />
         </div> :
         <textarea aria-label={question.label} placeholder={question.placeholder} value={answers[question.id] || ''} onChange={event => updateAnswer(question.id, event.target.value)} maxLength={600} rows={3} aria-invalid={invalid} aria-describedby={invalid ? question.id + '-error' : undefined} />}
       {invalid && <p className="field-error" id={question.id + '-error'} role="alert">{errors[question.id]}</p>}
@@ -148,7 +148,7 @@ export default function Diagnostic() {
         <div className="diagnostic-decoration" aria-hidden="true"><div /><div /><div /><span>S.A.C / DIAGNÓSTICO</span></div>
       </div>
       <div id="diagnostic-panel" className="diagnostic-panel">
-        <div className="form-topline"><span><span className="status-dot" />DIAGNÓSTICO SAC</span><span>{done ? 'CONCLUÍDO' : String(step + 1).padStart(2, '0') + ' / 11'}</span></div>
+        <div className="form-topline"><span><span className="status-dot" />DIAGNÓSTICO SAC</span><span>{done ? 'CONCLUÍDO' : String(step + 1).padStart(2, '0') + ' / ' + String(totalSteps).padStart(2, '0')}</span></div>
         <div className="progress-track" role="progressbar" aria-label="Progresso do diagnóstico" aria-valuemin={0} aria-valuemax={100} aria-valuenow={done ? 100 : progress}><span style={{ width: (done ? 100 : progress) + '%' }} /></div>
         {done ? <div className="completion" role="status">
           <div className="completion-icon"><CheckCheck size={32} /></div>
@@ -159,14 +159,13 @@ export default function Diagnostic() {
           {!live && <button className="button button-primary" onClick={() => submission && download(submission)}><Download size={17} />Baixar minhas respostas</button>}
           <p className="fine-print">A recomendação do Método SAC depende do estágio atual da operação, região, estrutura comercial e objetivo de expansão.</p>
           <button className="text-button" onClick={() => { setDone(false); setSubmission(null); setAnswers({}); setContact(emptyContact); setStep(0); setConsent(false); eventId.current = crypto.randomUUID(); milestones.current.clear(); interacted.current = false; }}><RotateCcw size={14} />Iniciar novo diagnóstico</button>
-        </div> : <form noValidate onSubmit={step === 10 ? finish : event => { event.preventDefault(); next(); }}>
+        </div> : <form noValidate onSubmit={step === contactStep ? finish : event => { event.preventDefault(); next(); }}>
           <div className="form-body" key={step}>
-            <span className="step-caption">ETAPA {step + 1} DE 11 · {step === 10 ? 'SEUS DADOS' : 'SUA OPERAÇÃO'}</span>
-            <h3 ref={heading} tabIndex={-1}>{step === 10 ? 'Estamos quase terminando seu Diagnóstico SAC.' : questionStep.title}</h3>
-            <p className="form-subtitle">{step === 10 ? 'Preencha seus dados para acompanhar suas respostas e os próximos passos.' : questionStep.subtitle}</p>
-            {step < 10 ? <>
+            <span className="step-caption">ETAPA {step + 1} DE {totalSteps} · {step === contactStep ? 'SEUS DADOS' : 'SUA OPERAÇÃO'}</span>
+            <h3 ref={heading} tabIndex={-1}>{step === contactStep ? 'Estamos quase terminando seu Diagnóstico SAC.' : questionStep.title}</h3>
+            <p className="form-subtitle">{step === contactStep ? 'Preencha seus dados para acompanhar suas respostas e os próximos passos.' : questionStep.subtitle}</p>
+            {step < contactStep ? <>
               {questionStep.questions.map(renderQuestion)}
-              {step === 6 && answers.infrastructure === 'CRM estruturado' && renderQuestion({ id: 'crm', label: 'Qual CRM sua empresa utiliza atualmente?', type: 'text', placeholder: 'Nome do CRM utilizado pela sua empresa' })}
             </> : <>
               {!live && <p className="preview-notice"><ShieldCheck size={18} />Versão de apresentação: seus dados ficam apenas nesta sessão. Ao concluir, você poderá baixar suas respostas.</p>}
               <div className="contact-grid">
@@ -183,7 +182,7 @@ export default function Diagnostic() {
           </div>
           <div className="form-actions">
             {step > 0 ? <button className="text-button" type="button" onClick={() => goTo(step - 1)} disabled={busy}><ArrowLeft size={16} />Voltar</button> : <span className="form-security"><LockKeyhole size={13} />Seus dados protegidos</span>}
-            <button className="button button-primary" type="submit" disabled={busy}>{busy ? <><LoaderCircle className="spin" size={17} />Enviando...</> : <>{step === 10 ? (live ? 'Finalizar meu diagnóstico SAC' : 'Concluir meu diagnóstico') : 'Continuar'}<ArrowRight size={17} /></>}</button>
+            <button className="button button-primary" type="submit" disabled={busy}>{busy ? <><LoaderCircle className="spin" size={17} />Enviando...</> : <>{step === contactStep ? (live ? 'Finalizar meu diagnóstico SAC' : 'Concluir meu diagnóstico') : 'Continuar'}<ArrowRight size={17} /></>}</button>
           </div>
           <div className="form-footnote">{saveIssue ? 'O navegador não permitiu salvar o progresso. Mantenha esta página aberta.' : <><ShieldCheck size={13} />Seu progresso é salvo durante esta sessão.</>}</div>
         </form>}
