@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { ArrowDown, ArrowDownLeft, ArrowRight, ArrowUpRight, BarChart3, Building2, Check, CircleDot, Crosshair, Factory, Globe2, Layers3, Menu, Network, PackageCheck, Plus, Radar, Route, Settings2, ShieldCheck, Target, TrendingUp, Users, Workflow, X, Zap } from 'lucide-react';
+import { ArrowDown, ArrowDownLeft, ArrowRight, ArrowUpRight, BarChart3, Building2, Check, CircleDot, Crosshair, Factory, Globe2, Layers3, Menu, Network, PackageCheck, Play, Plus, Radar, Route, Settings2, ShieldCheck, Target, TrendingUp, Users, Workflow, X, Zap } from 'lucide-react';
 import Diagnostic from './Diagnostic';
 import sacLogo from './Logo sac.png';
 import maykonVideo from './assets/testimonials/maykon.mp4';
@@ -18,6 +18,36 @@ function CTA({ children = 'Iniciar diagnóstico SAC', source = 'mid', outline = 
   return <a href="#diagnostico-sac" onClick={() => track(source + '_cta_click')} className={'button ' + (outline ? 'button-outline' : 'button-primary') + ' ' + className}>{children}<ArrowUpRight size={18} /></a>;
 }
 function Label({ children }: { children: ReactNode }) { return <span className="eyebrow"><span className="tiny-square" />{children}</span>; }
+type SocialVideo = { id: string; embedUrl?: string; src?: string; poster?: string; title?: string; company?: string };
+const socialVideos: SocialVideo[] = [
+  { id: '01', embedUrl: 'https://www.youtube.com/embed/zRgTgdW_pgc', title: 'Depoimento em vídeo', company: 'Assista ao relato completo' },
+  { id: '02' },
+  { id: '03' },
+];
+function SocialProof() {
+  return <section className="section social-proof-section" id="prova-social">
+    <div className="social-proof-glow" aria-hidden="true" />
+    <div className="container">
+      <div className="social-proof-heading reveal">
+        <div><Label>PROVA SOCIAL EM VÍDEO</Label><h2>Resultados ganham voz<br /><em>quando a operação conta.</em></h2></div>
+        <p>Este espaço receberá relatos reais em vídeo de empresas atendidas pelo Método SAC — no formato vertical, direto e sem roteiro engessado.</p>
+      </div>
+      <div className="proof-video-grid">
+        {socialVideos.map(video => <article className="proof-video-card reveal" key={video.id}>
+          <div className="proof-video-frame">
+            {video.embedUrl ? <iframe src={video.embedUrl} title={video.title || 'Depoimento em vídeo'} loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen /> : video.src ? <video controls playsInline preload="metadata" poster={video.poster} src={video.src} aria-label={'Depoimento em vídeo ' + video.id}>Seu navegador não suporta vídeos HTML5.</video> : <div className="proof-video-placeholder" aria-label={'Espaço reservado para depoimento em vídeo ' + video.id}>
+              <span className="proof-video-number">{video.id}</span>
+              <span className="proof-play"><Play size={22} fill="currentColor" /></span>
+              <span className="proof-placeholder-copy">VÍDEO VERTICAL<br />9:16</span>
+            </div>}
+          </div>
+          <div className="proof-video-meta"><span>RELATO {video.id}</span><strong>{video.title || 'Depoimento em vídeo'}</strong><p>{video.company || 'Conteúdo em preparação'}</p></div>
+        </article>)}
+      </div>
+      <div className="social-proof-cta reveal"><div><span>O PRÓXIMO CASO PODE COMEÇAR COM UM DIAGNÓSTICO.</span><p>Descubra o estágio atual da sua operação e o que precisa mudar para expandir com método.</p></div><CTA source="social_proof">Fazer meu diagnóstico SAC</CTA></div>
+    </div>
+  </section>;
+}
 const engines = [
   { label: 'Aquisição', icon: Target, description: 'Novas empresas no radar', detail: 'Campanhas e canais conectam sua operação a compradores B2B compatíveis.' },
   { label: 'Qualificação', icon: Settings2, description: 'Perfil certo. Oportunidade real.', detail: 'Critérios de perfil, região e momento ajudam a priorizar oportunidades.' },
@@ -145,6 +175,7 @@ export default function App() {
         </div><SystemVisual />
       </div><div className="container hero-bottom"><div><span className="small-cross">+</span>MAIS DEMANDA<span className="small-cross">+</span>MAIS CONTROLE<span className="small-cross">+</span>MAIS CRESCIMENTO</div><a href="#estrutura" aria-label="Explorar o método">EXPLORE O MÉTODO<ArrowDown size={15} /></a></div></section>
       <section className="trust-strip" id="estrutura"><div className="container"><p className="trust-caption">ESPECIALIZADO EM QUEM MOVE O MERCADO B2B</p><div className="industry-row">{[[Factory, 'Indústrias'], [PackageCheck, 'Distribuidoras'], [Settings2, 'Fabricantes'], [Globe2, 'Importadoras'], [Building2, 'Operações B2B']].map(([Icon, title]) => { const Symbol = Icon as typeof Factory; return <div key={String(title)}><Symbol size={23} strokeWidth={1.4} /><span>{String(title)}</span></div>; })}</div><div className="trust-signature"><span>Aquisição + Processo Comercial + Tecnologia</span><span>Uma única estrutura. Um objetivo: expansão.<ArrowUpRight size={14} /></span></div></div></section>
+      <SocialProof />
       <Diagnostic />
       <section className="section problem-section"><div className="container split-layout">
         <div className="reveal"><Label>O VERDADEIRO GARGALO</Label><h2>O problema não é<br />o representante.<br /><span className="muted-heading">É depender só dele.</span></h2><p>Um bom representante abre clientes e constrói uma carteira. Com o tempo, essa carteira cresce. E isso é ótimo.</p><p className="muted">Mas atender clientes, negociar pedidos, resolver problemas e fazer pós-venda passa a ocupar a rotina. Naturalmente, sobra menos tempo para prospectar.</p><div className="highlight-line">A empresa continua vendendo para quem já compra,<br /><strong>mas abre cada vez menos clientes novos.</strong></div></div>
