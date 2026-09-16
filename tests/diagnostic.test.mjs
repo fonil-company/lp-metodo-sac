@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { validateContact, formatPhone, formatInvestment, normalizePhone, sanitizeAnswers, attributionFrom, leadWebhookPayload, submitLead } from '../src/lib/diagnostic.mjs';
+import { validateContact, formatPhone, normalizePhone, sanitizeAnswers, attributionFrom, leadWebhookPayload, submitLead } from '../src/lib/diagnostic.mjs';
 
 const contact = { name: 'Ana Silva', company: 'Empresa Teste', phone: '+55 (11) 99999-9999', email: 'ana@example.com', city: 'São Paulo', state: 'SP' };
 test('validates Brazilian and international contacts', () => {
@@ -16,13 +16,8 @@ test('formats and normalizes WhatsApp without dropping DDI', () => {
   assert.equal(formatPhone('+351912345678'), '+351912345678');
   assert.equal(normalizePhone('11999999999'), '+5511999999999');
 });
-test('formats investment as Brazilian currency using numeric input only', () => {
-  assert.equal(formatInvestment('10000'), 'R$ 10.000');
-  assert.equal(formatInvestment('R$ 1.234'), 'R$ 1.234');
-  assert.equal(formatInvestment('sem valor'), '');
-});
 test('removes answers from deleted diagnostic steps', () => {
-  assert.deepEqual(sanitizeAnswers({ bottleneck: 'Gargalo', infrastructure: 'Planilhas', crm: 'Old CRM', capacity: 'Sim', objective: 'Crescer', profile: 'Indústria', budget: '15000' }), { profile: 'Indústria', budget: 'R$ 15.000' });
+  assert.deepEqual(sanitizeAnswers({ bottleneck: 'Gargalo', infrastructure: 'Planilhas', crm: 'Old CRM', capacity: 'Sim', objective: 'Crescer', timing: 'Imediatamente', budget: 'R$ 15.000', profile: 'Indústria' }), { profile: 'Indústria' });
 });
 test('preserves attribution fields without unrelated URL values', () => {
   assert.deepEqual(attributionFrom('?utm_source=google&gclid=abc&email=secret'), { utm_source: 'google', gclid: 'abc' });

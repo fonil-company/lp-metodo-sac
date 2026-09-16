@@ -14,11 +14,6 @@ export function formatPhone(value) {
   const split = rest.length > 8 ? 5 : 4;
   return prefix + ') ' + rest.slice(0, split) + (rest.length > split ? '-' + rest.slice(split) : '');
 }
-export function formatInvestment(value) {
-  const digits = String(value || '').replace(/\D/g, '').slice(0, 12);
-  if (!digits) return '';
-  return 'R$ ' + Number(digits).toLocaleString('pt-BR');
-}
 /** @returns {Record<string, string>} */
 export function validateContact(contact) {
   const errors = {};
@@ -33,8 +28,7 @@ export function validateContact(contact) {
 }
 export function sanitizeAnswers(answers) {
   const result = { ...answers };
-  for (const removedKey of ['bottleneck', 'infrastructure', 'crm', 'capacity', 'objective']) delete result[removedKey];
-  if (result.budget) result.budget = formatInvestment(result.budget);
+  for (const removedKey of ['bottleneck', 'infrastructure', 'crm', 'capacity', 'objective', 'timing', 'budget']) delete result[removedKey];
   return result;
 }
 export function attributionFrom(search) {

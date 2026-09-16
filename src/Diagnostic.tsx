@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Check, CheckCheck, Clock3, Download, LockKeyhole, RotateCcw, ShieldCheck, LoaderCircle } from 'lucide-react';
 import { steps, type Question } from './diagnostic-data';
-import { STORAGE_KEY, formatPhone, formatInvestment, validateContact, normalizePhone, sanitizeAnswers, attributionFrom, leadWebhookPayload, submitLead } from './lib/diagnostic.mjs';
+import { STORAGE_KEY, formatPhone, validateContact, normalizePhone, sanitizeAnswers, attributionFrom, leadWebhookPayload, submitLead } from './lib/diagnostic.mjs';
 import { track } from './lib/tracking';
 
 type Answers = Record<string, string>;
@@ -103,7 +103,7 @@ export default function Diagnostic() {
     try {
       if (live) {
         await submitLead(endpoint, leadWebhookPayload(payload.contact));
-        track('diagnostic_submit', { event_id: payload.event_id, profile: answers.profile, segment: answers.segment, revenue: answers.revenue, representatives: answers.representatives, authority: answers.authority, timing: answers.timing });
+        track('diagnostic_submit', { event_id: payload.event_id, profile: answers.profile, segment: answers.segment, revenue: answers.revenue, representatives: answers.representatives, authority: answers.authority });
       }
       setSubmission(payload); setDone(true);
       try { sessionStorage.removeItem(STORAGE_KEY); } catch { /* Browser storage may be unavailable. */ }
@@ -123,9 +123,6 @@ export default function Diagnostic() {
             <input type="radio" name={question.id} value={option} checked={answers[question.id] === option} onChange={() => updateAnswer(question.id, option)} aria-invalid={invalid} aria-describedby={invalid ? question.id + '-error' : undefined} />
             <span className="radio-mark">{answers[question.id] === option && <Check size={11} />}</span><span>{option}</span>
           </label>)}
-        </div> :
-        question.type === 'budget' ? <div className="budget-input">
-          <input aria-label={question.label} placeholder={question.placeholder} inputMode="numeric" autoComplete="off" maxLength={18} value={answers.budget || ''} onChange={event => updateAnswer('budget', formatInvestment(event.target.value))} aria-invalid={invalid} aria-describedby={invalid ? 'budget-error' : undefined} />
         </div> :
         <textarea aria-label={question.label} placeholder={question.placeholder} value={answers[question.id] || ''} onChange={event => updateAnswer(question.id, event.target.value)} maxLength={600} rows={3} aria-invalid={invalid} aria-describedby={invalid ? question.id + '-error' : undefined} />}
       {invalid && <p className="field-error" id={question.id + '-error'} role="alert">{errors[question.id]}</p>}

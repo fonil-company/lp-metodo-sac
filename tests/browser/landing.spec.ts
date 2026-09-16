@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test('desktop: complete shortened diagnostic with investment mask and CRM submission', async ({ page }) => {
+test('desktop: complete shortened diagnostic with CRM submission', async ({ page }) => {
   const errors: string[] = [];
   let submittedLead: Record<string, string> | undefined;
   page.on('pageerror', error => errors.push(error.message));
@@ -38,11 +38,6 @@ test('desktop: complete shortened diagnostic with investment mask and CRM submis
   await panel.getByRole('button', { name: 'Continuar', exact: true }).click();
   await panel.getByRole('radio', { name: 'Sou o principal decisor', exact: true }).check();
   await panel.locator('select').selectOption('Diretor Comercial');
-  await panel.getByRole('button', { name: 'Continuar', exact: true }).click();
-  await panel.getByRole('radio', { name: 'Nos próximos 30 dias', exact: true }).check();
-  const investment = panel.getByRole('textbox', { name: 'Qual nível de investimento sua empresa tem capacidade de avaliar hoje?' });
-  await investment.fill('15000');
-  await expect(investment).toHaveValue('R$ 15.000');
   await panel.getByRole('button', { name: 'Continuar', exact: true }).click();
   await panel.getByRole('button', { name: 'Finalizar meu diagnóstico SAC', exact: true }).click();
   await expect(panel.getByRole('alert')).toHaveCount(7);

@@ -1,4 +1,4 @@
-export type Question = { id: string; label: string; options?: string[]; placeholder?: string; optional?: boolean; type?: 'text' | 'budget' };
+export type Question = { id: string; label: string; options?: string[]; placeholder?: string; optional?: boolean; type?: 'text' };
 export const steps: { title: string; subtitle: string; questions: Question[] }[] = [
   { title: 'Vamos conhecer sua operação.', subtitle: 'Tudo começa entendendo o contexto da sua empresa.', questions: [
     { id: 'profile', label: 'Qual é o perfil da sua empresa?', options: ['Indústria', 'Distribuidora', 'Fabricante', 'Importadora', 'Atacadista', 'Outro negócio B2B'] },
@@ -22,9 +22,5 @@ export const steps: { title: string; subtitle: string; questions: Question[] }[]
   { title: 'Qual é o seu papel nessa mudança?', subtitle: 'Para conectar a estratégia às pessoas certas.', questions: [
     { id: 'authority', label: 'Qual é o seu papel na decisão sobre projetos de expansão comercial?', options: ['Sou o principal decisor', 'Decido junto com outros sócios/diretores', 'Influencio a decisão', 'Sou responsável por avaliar fornecedores e apresentar internamente', 'Não participo diretamente da decisão'] },
     { id: 'role', label: 'Qual é o seu cargo?', options: ['Sócio / Proprietário', 'CEO / Presidente', 'Diretor', 'Diretor Comercial', 'Gerente Comercial', 'Gestor de Expansão', 'Gerente de Marketing', 'Coordenador', 'Outro'] }
-  ]},
-  { title: 'Quando faz sentido dar o próximo passo?', subtitle: 'Cada operação tem seu momento e sua capacidade de investimento.', questions: [
-    { id: 'timing', label: 'Se encontrarmos uma estrutura que faça sentido para sua empresa, quando vocês pretendem melhorar a aquisição comercial?', options: ['Imediatamente', 'Nos próximos 30 dias', 'Entre 1 e 3 meses', 'Entre 3 e 6 meses', 'Ainda estamos avaliando possibilidades'] },
-    { id: 'budget', label: 'Qual nível de investimento sua empresa tem capacidade de avaliar hoje?', type: 'budget', placeholder: 'R$ 0' }
   ]}
 ];
