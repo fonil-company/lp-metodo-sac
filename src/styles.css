@@ -25,6 +25,17 @@
 .system-core>span{margin-top:14px}
 @media(max-width:650px){.brand .official-logo{width:165px}.authority-card .official-logo{width:230px}}
 
+/* Portrait testimonials keep the original framing on desktop and mobile. */
+.testimonials-section{border-top:1px solid var(--line);background:radial-gradient(ellipse at 50% 0,#a8f60008,transparent 65%)}
+.testimonials-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:28px;max-width:748px;margin:0 auto}
+.testimonial-card{min-width:0;margin:0;overflow:hidden;border:1px solid var(--line);border-radius:12px;background:var(--card)}
+.testimonial-card video{display:block;width:100%;height:auto;aspect-ratio:9/16;object-fit:contain;background:#000}
+.testimonial-card video:focus-visible{outline:2px solid var(--lime);outline-offset:-3px}
+.testimonial-card figcaption{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:20px}
+.testimonial-card figcaption strong{font-size:17px;font-family:'Montserrat',sans-serif}
+.testimonial-card figcaption span{color:var(--muted);font-size:8px;letter-spacing:1px}
+@media(max-width:650px){.testimonials-grid{grid-template-columns:1fr;max-width:360px;gap:24px}.testimonial-card figcaption{padding:18px}}
+
 /* Official partner logos in the authority section. */
 .partners>div{min-width:0}
 .partners .fonil-wordmark,.partners .scalyx-wordmark{

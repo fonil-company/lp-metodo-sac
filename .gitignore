@@ -9,3 +9,7 @@ test-results/
 .tanstack/
 .nitro/
 .output/
+
+# Original testimonial exports stay local; web versions are in src/assets/testimonials/.
+/src/FONIL - MAYKON (DEPOIMENTO).mp4
+/src/FONIL - JÉSSICA (DEPOIMENTO).mp4
