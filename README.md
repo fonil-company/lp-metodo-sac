@@ -33,11 +33,13 @@ As respostas detalhadas do diagnóstico, o nome da empresa e a atribuição de m
 
 ## Analytics
 
-A função `track` envia eventos ao `window.dataLayer`, ao evento DOM `sac:analytics` e ao Meta Pixel (`fbq`), sempre apenas após consentimento para métricas ("Aceitar métricas" no banner de cookies). O script do Pixel só é injetado no navegador nesse momento — nada é carregado antes do consentimento. Uma equipe de mídia pode conectar seu gerenciador de tags aos eventos do dataLayer normalmente.
+A função `track` envia eventos ao `window.dataLayer`, ao evento DOM `sac:analytics`, ao Meta Pixel (`fbq`) e ao Microsoft Clarity (`clarity`), sempre apenas após consentimento para métricas ("Aceitar métricas" no banner de cookies). Os scripts do Pixel e do Clarity só são injetados no navegador nesse momento — nada é carregado antes do consentimento. Uma equipe de mídia pode conectar seu gerenciador de tags aos eventos do dataLayer normalmente.
 
 Eventos implementados: `lp_view`, `hero_cta_click`, `mid_cta_click`, `final_cta_click`, `diagnostic_start`, `diagnostic_step_25`, `diagnostic_step_50`, `diagnostic_step_75` e `diagnostic_submit`. Dados pessoais de contato não são enviados ao dataLayer nem ao Pixel.
 
 No Meta Pixel (ID `1014610764961858`), `lp_view` é enviado como o evento padrão `PageView` e `diagnostic_submit` como `Lead` (com `eventID` para dedup futura com uma Conversions API server-side, se implementada); os demais eventos são enviados como eventos customizados (`trackCustom`) com o mesmo nome, mantendo paridade total com o dataLayer. O fallback `<noscript>` do Pixel foi deliberadamente omitido: ele dispararia o pixel sem possibilidade de checar consentimento (navegador sem JS não executa o banner de cookies), o que contrariaria a política de "métricas só após autorização" adotada no restante do site.
+
+No Microsoft Clarity (projeto `yjx5j5uhnu`), cada evento do dataLayer é replicado como evento customizado via `clarity('event', nome)`, na mesma condição de consentimento.
 
 O SAC Score e o evento `qualified_lead` dependem de regras comerciais aprovadas e devem ser calculados no backend. Não foram inventados pesos, limites ou classificações.
 
