@@ -66,7 +66,7 @@ async function proxyLead(request, response) {
   try {
     if (!leadWebhookUrl) {
       console.error('LEAD_WEBHOOK_URL is not configured');
-      sendJson(response, 503, { success: false, error: 'O recebimento de leads nÃ£o estÃ¡ configurado.' });
+      sendJson(response, 503, { success: false, error: 'O recebimento de leads não está configurado.' });
       return;
     }
 
