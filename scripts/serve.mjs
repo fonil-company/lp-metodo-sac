@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 const root = resolve(fileURLToPath(new URL('../dist', import.meta.url)));
 const port = Number.parseInt(process.env.PORT || '4173', 10);
 const host = process.env.HOST || '0.0.0.0';
-const leadWebhookUrl = process.env.LEAD_WEBHOOK_URL || 'https://crm.fonilgroup.com.br/api/webhooks/leads/cmpylrvkv000376i6bzhsl1lo';
+const leadWebhookUrl = process.env.LEAD_WEBHOOK_URL?.trim();
 const maxLeadBodySize = 32 * 1024;
 
 if (!Number.isInteger(port) || port < 1 || port > 65535) {
@@ -64,6 +64,12 @@ function sendJson(response, status, payload) {
 
 async function proxyLead(request, response) {
   try {
+    if (!leadWebhookUrl) {
+      console.error('LEAD_WEBHOOK_URL is not configured');
+      sendJson(response, 503, { success: false, error: 'O recebimento de leads nÃ£o estÃ¡ configurado.' });
+      return;
+    }
+
     const chunks = [];
     let size = 0;
     for await (const chunk of request) {
@@ -76,7 +82,7 @@ async function proxyLead(request, response) {
     }
 
     const submitted = JSON.parse(Buffer.concat(chunks).toString('utf8'));
-    const acceptedFields = ['phone', 'name', 'email', 'document', 'city', 'state', 'pipeline_stage', 'consultant'];
+    const acceptedFields = ['phone', 'name', 'company', 'email', 'document', 'city', 'state', 'pipeline_stage', 'consultant'];
     const lead = Object.fromEntries(acceptedFields
       .filter(key => typeof submitted?.[key] === 'string' && submitted[key].trim())
       .map(key => [key, submitted[key].trim()]));

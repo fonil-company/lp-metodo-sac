@@ -25,9 +25,9 @@ Acesse http://localhost:5173. Para gerar a versão estática: `npm run build`. O
 
 ## Integração de leads
 
-Copie `.env.example` para `.env.local` apenas se precisar configurar as URLs de privacidade/termos ou o número oficial de WhatsApp. Recompile após mudanças.
+Copie `.env.example` para `.env.local` e configure `LEAD_WEBHOOK_URL` com a URL completa e o token do receptor. Em produção, defina a mesma variável no ambiente de deploy. A URL fica somente no servidor e não é incluída no bundle do navegador.
 
-O formulário envia os leads ao webhook do CRM da Fonil Group por meio do proxy de mesma origem em `/api/leads`, evitando bloqueios de CORS no navegador. O POST JSON segue o contrato do endpoint com `phone`, `name`, `email`, `city` e `state`. O telefone é normalizado com DDI antes do envio; a deduplicação e o enriquecimento por telefone são realizados pelo CRM.
+O formulário envia os leads ao webhook configurado por meio do proxy de mesma origem em `/api/leads`, evitando bloqueios de CORS no navegador. O POST JSON segue o contrato com `phone`, `name`, `company`, `email`, `city` e `state`. O telefone é normalizado com DDI antes do envio.
 
 As respostas detalhadas do diagnóstico, o nome da empresa e a atribuição de mídia não fazem parte do contrato desse webhook e, por isso, não são enviados como campos extras. O evento `diagnostic_submit` só ocorre depois de uma resposta HTTP bem-sucedida. Erros ou timeout preservam as respostas e permitem nova tentativa com o mesmo ID de evento local.
 

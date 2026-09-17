@@ -39,6 +39,7 @@ export function leadWebhookPayload(contact) {
   return {
     phone: normalizePhone(contact.phone || ''),
     name: contact.name?.trim() || '',
+    company: contact.company?.trim() || '',
     email: contact.email?.trim() || '',
     city: contact.city?.trim() || '',
     state: contact.state?.trim() || '',

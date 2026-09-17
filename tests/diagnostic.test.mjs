@@ -26,6 +26,7 @@ test('maps contact data to the CRM webhook contract', () => {
   assert.deepEqual(leadWebhookPayload(contact), {
     phone: '+5511999999999',
     name: 'Ana Silva',
+    company: 'Empresa Teste',
     email: 'ana@example.com',
     city: 'São Paulo',
     state: 'SP',

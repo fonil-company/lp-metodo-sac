@@ -52,6 +52,7 @@ test('desktop: complete shortened diagnostic with CRM submission', async ({ page
   await expect(panel.getByRole('heading', { name: 'Diagnóstico recebido.' })).toBeVisible();
   expect(submittedLead?.phone).toBe('+5511999999999');
   expect(submittedLead?.name).toBe('Ana Silva');
+  expect(submittedLead?.company).toBe('Empresa Teste');
   expect(await page.evaluate(() => sessionStorage.getItem('sac-diagnostic-v1'))).toBeNull();
   expect(await page.evaluate(() => (window as any).dataLayer)).toBeUndefined();
   expect(errors).toEqual([]);
