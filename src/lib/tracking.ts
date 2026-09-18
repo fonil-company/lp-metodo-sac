@@ -8,16 +8,28 @@ const metaPixelId = '1014610764961858';
 let metaPixelReady = false;
 function ensureMetaPixel() {
   const target = window as TrackingWindow;
-  if (metaPixelReady || target.fbq) { metaPixelReady = true; return; }
+  if (metaPixelReady) return;
+  if (target.fbq) {
+    disableAutomaticMetaEvents(target.fbq);
+    metaPixelReady = true;
+    return;
+  }
   const fbq = function (...args: unknown[]) { if (fbq.callMethod) fbq.callMethod(...args); else fbq.queue.push(args); } as MetaPixelFn;
   fbq.queue = []; fbq.loaded = true; fbq.version = '2.0'; fbq.push = fbq;
   target._fbq = fbq; target.fbq = fbq;
+  disableAutomaticMetaEvents(fbq);
+  fbq('init', metaPixelId);
+  metaPixelReady = true;
   const script = document.createElement('script');
   script.async = true; script.src = 'https://connect.facebook.net/en_US/fbevents.js';
   const first = document.getElementsByTagName('script')[0];
   first?.parentNode?.insertBefore(script, first);
-  fbq('init', metaPixelId);
-  metaPixelReady = true;
+}
+
+function disableAutomaticMetaEvents(fbq: MetaPixelFn) {
+  // Button detection must not bypass the confirmed form submission.
+  fbq('set', 'autoConfig', false, metaPixelId);
+  fbq('set', 'smartSetup', false, metaPixelId);
 }
 // lp_view e diagnostic_submit mapeiam para eventos padrão do Meta (PageView/Lead) para otimização de anúncios; os demais viram eventos customizados com o mesmo nome, mantendo paridade total com o dataLayer.
 const metaStandardEvents: Record<string, string> = { lp_view: 'PageView', diagnostic_submit: 'Lead' };
@@ -50,7 +62,7 @@ function trackClarity(event: string) {
   (window as TrackingWindow).clarity?.('event', event);
 }
 
-export function track(event: string, params: Record<string, unknown> = {}) {
+function emit(event: string, params: Record<string, unknown> = {}) {
   if (readConsent() !== 'accepted') return;
   const target = window as TrackingWindow;
   target.dataLayer = target.dataLayer || [];
@@ -58,4 +70,17 @@ export function track(event: string, params: Record<string, unknown> = {}) {
   window.dispatchEvent(new CustomEvent('sac:analytics', { detail: { event, ...params } }));
   trackMetaPixel(event, params);
   trackClarity(event);
+}
+
+const confirmedLeads = new Set<string>();
+export function trackConfirmedLead(receipt: { success?: boolean }, params: Record<string, unknown>) {
+  const id = typeof params.event_id === 'string' ? params.event_id : '';
+  if (receipt?.success !== true || !id || confirmedLeads.has(id) || readConsent() !== 'accepted') return;
+  confirmedLeads.add(id);
+  emit('diagnostic_submit', params);
+}
+
+export function track(event: string, params: Record<string, unknown> = {}) {
+  if (event === 'diagnostic_submit' || event === 'Lead') return;
+  emit(event, params);
 }

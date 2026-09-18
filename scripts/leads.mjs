@@ -1,6 +1,8 @@
 import { createHash } from 'node:crypto';
+import { attributionFields } from '../src/lib/attribution.mjs';
 
 const fields = ['phone', 'name', 'company', 'email', 'document', 'city', 'state', 'pipeline_stage', 'consultant'];
+const trackingFields = [...attributionFields, 'event_id', 'form_url', 'created_at', '_fbc', '_fbp'];
 const result = (status, error) => ({ status, body: error ? { success: false, error } : { success: true } });
 
 // Each server process remembers confirmed deliveries for 24 hours.
@@ -26,6 +28,10 @@ export function createLeadHandler({ primaryUrl, fonilUrl, fetcher = fetch, now =
     if (submitted.event_id !== undefined && (typeof submitted.event_id !== 'string' || !/^[a-zA-Z0-9_-]{1,128}$/.test(submitted.event_id))) {
       return result(400, 'Identificador de envio inválido.');
     }
+    for (const key of trackingFields) {
+      if (typeof submitted[key] === 'string' && submitted[key].trim()) lead[key] = submitted[key];
+    }
+    lead.event_name = 'Lead';
     const fingerprint = createHash('sha256').update(JSON.stringify(lead)).digest('hex');
     // Payload hash also protects retries from pages opened before this deployment.
     const key = submitted.event_id ? `event:${submitted.event_id}` : `payload:${fingerprint}`;

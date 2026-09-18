@@ -35,9 +35,10 @@ async function setup(t, options = {}) {
 
 test('delivers each contract to two HTTP receivers and confirms both', async t => {
   const { received, post } = await setup(t);
-  assert.deepEqual(await post({ ...lead, document: '12345678000190', pipeline_stage: 'Qualificado', consultant: 'Teste', utm_source: 'not-in-contract' }), { status: 200, body: { success: true } });
-  const { event_id, ...contact } = lead;
-  const extra = { document: '12345678000190', pipeline_stage: 'Qualificado', consultant: 'Teste' };
+  const tracking = { utm_source: 'meta', utm_medium: 'paid', utm_campaign: 'coleção nova', utm_content: 'A+B', utm_term: ' setor ', utm_id: 'campaign-1', fbclid: 'click-1', gclid: 'click-2', ad_id: 'ad-1', creative_id: 'creative-1', _fbc: 'fb.1.123.click', _fbp: 'fb.1.123.browser', landing_url: 'https://example.test/?utm_source=meta', referrer: 'https://example.test/ad', form_url: 'https://example.test/#form', created_at: '2026-09-18T12:00:00.000Z' };
+  assert.deepEqual(await post({ ...lead, document: '12345678000190', pipeline_stage: 'Qualificado', consultant: 'Teste', ...tracking, unrelated: 'drop-me' }), { status: 200, body: { success: true } });
+  const contact = lead;
+  const extra = { document: '12345678000190', pipeline_stage: 'Qualificado', consultant: 'Teste', ...tracking, event_name: 'Lead' };
   assert.deepEqual(received.primary[0], { method: 'POST', contentType: 'application/json', payload: { ...contact, ...extra } });
   const { company, ...fonil } = contact;
   assert.deepEqual(received.fonil[0].payload, { ...fonil, phone: '11999999999', ...extra });

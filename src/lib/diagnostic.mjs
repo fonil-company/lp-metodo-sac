@@ -1,4 +1,5 @@
 export const STORAGE_KEY = 'sac-diagnostic-v1';
+export { attributionFrom } from './attribution.mjs';
 export function normalizePhone(value) {
   const digits = value.replace(/\D/g, '');
   return value.trim().startsWith('+') ? '+' + digits : '+55' + digits;
@@ -30,10 +31,6 @@ export function sanitizeAnswers(answers) {
   const result = { ...answers };
   for (const removedKey of ['bottleneck', 'infrastructure', 'crm', 'capacity', 'objective', 'timing', 'budget']) delete result[removedKey];
   return result;
-}
-export function attributionFrom(search) {
-  const params = new URLSearchParams(search);
-  return Object.fromEntries(['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'fbclid', 'gclid', 'ad_id', 'creative_id'].filter(key => params.has(key)).map(key => [key, params.get(key)]));
 }
 export function leadWebhookPayload(contact) {
   return {

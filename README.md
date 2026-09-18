@@ -29,9 +29,13 @@ Copie `.env.example` para `.env.local` e configure `LEAD_WEBHOOK_URL` com a URL 
 
 O formulário envia os leads para `/api/leads`. O servidor faz um POST JSON para cada destino configurado, em paralelo. O Supabase continua recebendo `phone` com DDI, `name`, `company`, `email`, `city` e `state`. O CRM Fonil recebe `phone`, `name`, `email`, `city` e `state`, sem `company`; telefones brasileiros são enviados apenas com DDD e número, sem `+55`. O backend também aceita os campos opcionais `document`, `pipeline_stage` e `consultant` quando fornecidos; o formulário atual não os coleta.
 
-As respostas detalhadas do diagnóstico e a atribuição de mídia não são adicionadas aos contratos dos webhooks. A API retorna `{ "success": true }` e o evento `diagnostic_submit` ocorre apenas após todos os destinos configurados confirmarem o recebimento. Respostas HTTP de erro, JSON inválido ou uma negativa explícita (`success: false`, `ok: false` ou `error`) impedem a confirmação. Uma resposta vazia com HTTP 2xx do receptor continua sendo aceita.
+Os dois webhooks recebem os campos de atribuição no primeiro nível do JSON: `utm_source`, `utm_medium`, `utm_campaign`, `utm_content`, `utm_term`, `utm_id`, `fbclid`, `gclid`, `ad_id` e `creative_id`, quando presentes. Também recebem `event_id`, `event_name: "Lead"`, `landing_url`, `referrer`, `form_url`, `created_at` e os cookies `_fbc` e `_fbp`, quando disponíveis. O exemplo de contrato Fonil fornecido documenta somente os campos de contato: a persistência dos campos adicionais de atribuição precisa ser confirmada no receptor do CRM. Não há envio à API de Conversões da Meta.
 
-O `event_id` é usado internamente pela API, sem adicionar campos ao JSON dos CRMs. O navegador mantém esse ID nas novas tentativas e no recarregamento da aba; alterar os dados de contato inicia um novo envio. O servidor registra os destinos já confirmados e, nas tentativas seguintes, envia somente aos pendentes. Esse registro dura 24 horas, com limite de 10 mil envios por processo, e armazena apenas o hash dos dados e o status de entrega. Não é uma fila persistente: reiniciar o servidor, usar múltiplas réplicas ou receber um timeout após o CRM já gravar o lead pode resultar em duplicação. Garantia entre processos exige armazenamento compartilhado e idempotência nos receptores. Sem nova tentativa do visitante, uma falha parcial permanece pendente.
+A atribuição usa a última entrada com parâmetros de campanha na sessão da aba, armazenada em `sac-attribution-v1`, sem dados pessoais de contato. Navegação sem campanha ou com parâmetros vazios preserva a entrada anterior; uma nova campanha substitui o conjunto completo. A URL e o referrer da entrada são preservados separadamente da URL do formulário e do horário do envio. Sem acesso ao armazenamento, a página mantém a atribuição em memória até ser recarregada.
+
+As respostas detalhadas do diagnóstico permanecem fora dos contratos dos webhooks. A API retorna `{ "success": true }` e o evento `diagnostic_submit` ocorre apenas após todos os destinos configurados confirmarem o recebimento. Respostas HTTP de erro, JSON inválido ou uma negativa explícita (`success: false`, `ok: false` ou `error`) impedem a confirmação. Uma resposta vazia com HTTP 2xx do receptor continua sendo aceita.
+
+O `event_id` é encaminhado aos CRMs e usado como `eventID` no Pixel. O navegador mantém esse ID e o JSON completo nas novas tentativas e no recarregamento da aba; alterar os dados de contato inicia um novo envio. O servidor registra os destinos já confirmados e, nas tentativas seguintes, envia somente aos pendentes. Esse registro dura 24 horas, com limite de 10 mil envios por processo, e armazena apenas o hash dos dados e o status de entrega. Não é uma fila persistente: reiniciar o servidor, usar múltiplas réplicas ou receber um timeout após o CRM já gravar o lead pode resultar em duplicação. Garantia entre processos exige armazenamento compartilhado e idempotência nos receptores. Sem nova tentativa do visitante, uma falha parcial permanece pendente.
 
 ### EasyPanel
 
@@ -51,6 +55,8 @@ Eventos implementados: `lp_view`, `hero_cta_click`, `mid_cta_click`, `final_cta_
 No Meta Pixel (ID `1014610764961858`), `lp_view` é enviado como o evento padrão `PageView` e `diagnostic_submit` como `Lead` (com `eventID` para dedup futura com uma Conversions API server-side, se implementada); os demais eventos são enviados como eventos customizados (`trackCustom`) com o mesmo nome, mantendo paridade total com o dataLayer. O fallback `<noscript>` do Pixel foi deliberadamente omitido: ele dispararia o pixel sem possibilidade de checar consentimento (navegador sem JS não executa o banner de cookies), o que contrariaria a política de "métricas só após autorização" adotada no restante do site.
 
 No Microsoft Clarity (projeto `yjx5j5uhnu`), cada evento do dataLayer é replicado como evento customizado via `clarity('event', nome)`, na mesma condição de consentimento.
+
+A página desativa `autoConfig` e `smartSetup` para este Pixel antes da inicialização, evitando que a configuração automática associe cliques à conversão. O único `Lead` explícito depende de formulário válido e resposta positiva da API. As opções foram verificadas no [script oficial do Pixel](https://connect.facebook.net/en_US/fbevents.js), pois a documentação da Meta respondeu HTTP 429 durante a consulta. Regras de clique configuradas externamente no Gerenciador de Eventos ou em outro gerenciador de tags também devem ser revisadas se continuarem disparando eventos; essas configurações externas não foram inspecionadas ou alteradas.
 
 O SAC Score e o evento `qualified_lead` dependem de regras comerciais aprovadas e devem ser calculados no backend. Não foram inventados pesos, limites ou classificações.
 
@@ -73,8 +79,10 @@ Os diálogos de privacidade e termos são avisos de apresentação, não documen
 
 ```sh
 npm test
-npx playwright test
 npm run build
+npx playwright test
 ```
 
 Os testes de navegador utilizam o Google Chrome instalado, em modo headless. Validam preenchimento completo, persistência, retorno, CRM condicional, erros, exportação, consentimento, menu, FAQ e overflow em 320, 390, 768, 1024 e 1440 px. Capturas ficam em `test-results/` (ignorado pelo Git).
+
+O teste `production.spec.ts` exige o build e executa a página compilada com a API Node e dois receptores HTTP locais. Verifica os campos efetivamente recebidos, falha parcial com HTTP 200 negativo, reenvio e o `eventID` do único `Lead` confirmado. Os testes não criam cadastros no CRM real nem enviam eventos para a Meta.

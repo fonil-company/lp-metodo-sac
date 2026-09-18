@@ -16,6 +16,7 @@ ENV NODE_ENV=production \
 
 COPY --from=build /app/dist ./dist
 COPY scripts ./scripts
+COPY src/lib/attribution.mjs ./src/lib/attribution.mjs
 
 EXPOSE 80
 

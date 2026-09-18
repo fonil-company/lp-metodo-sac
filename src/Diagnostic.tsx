@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Check, CheckCheck, Clock3, Download, LockKeyhole, RotateCcw, ShieldCheck, LoaderCircle } from 'lucide-react';
 import { steps, type Question } from './diagnostic-data';
-import { STORAGE_KEY, formatPhone, validateContact, normalizePhone, sanitizeAnswers, attributionFrom, leadWebhookPayload, submitLead } from './lib/diagnostic.mjs';
-import { track } from './lib/tracking';
+import { STORAGE_KEY, formatPhone, validateContact, normalizePhone, sanitizeAnswers, leadWebhookPayload, submitLead } from './lib/diagnostic.mjs';
+import { getAttribution, readMetaCookies } from './lib/attribution.mjs';
+import { track, trackConfirmedLead } from './lib/tracking';
 
 type Answers = Record<string, string>;
 type Contact = { name: string; company: string; phone: string; email: string; city: string; state: string };
@@ -23,6 +24,7 @@ function restore() {
       contact: Object.fromEntries(Object.keys(emptyContact).map(key => [key, typeof saved.contact?.[key] === 'string' ? saved.contact[key] : ''])) as Contact,
       eventId: typeof saved.eventId === 'string' ? saved.eventId : undefined,
       submittedContact: typeof saved.submittedContact === 'string' ? saved.submittedContact : '',
+      pendingLead: saved.pendingLead && typeof saved.pendingLead === 'object' && saved.pendingLead.event_id === saved.eventId ? saved.pendingLead as Record<string, string> : null,
     };
   } catch { return null; }
 }
@@ -42,15 +44,16 @@ export default function Diagnostic() {
   const milestones = useRef(new Set<number>());
   const eventId = useRef(restored?.eventId || crypto.randomUUID());
   const submittedContact = useRef(restored?.submittedContact || '');
+  const pendingLead = useRef<Record<string, string> | null>(restored?.pendingLead || null);
   const sending = useRef(false);
   const completed = useRef(false);
-  const attribution = useRef(attributionFrom(window.location.search));
+  const attribution = useRef(getAttribution());
   const questionStep = steps[Math.min(step, contactStep - 1)];
   const progress = Math.round((step / totalSteps) * 100);
 
   useEffect(() => {
     if (done) return;
-    try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ step, answers, contact, eventId: eventId.current, submittedContact: submittedContact.current })); }
+    try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ step, answers, contact, eventId: eventId.current, submittedContact: submittedContact.current, pendingLead: pendingLead.current })); }
     catch { setSaveIssue(true); }
   }, [step, answers, contact, done]);
   useEffect(() => {
@@ -98,9 +101,16 @@ export default function Diagnostic() {
     }
     const lead = leadWebhookPayload(contact);
     const contactSignature = JSON.stringify(lead);
-    if (submittedContact.current && submittedContact.current !== contactSignature) eventId.current = crypto.randomUUID();
+    if (submittedContact.current && submittedContact.current !== contactSignature) {
+      eventId.current = crypto.randomUUID();
+      pendingLead.current = null;
+    }
     submittedContact.current = contactSignature;
-    try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ step, answers, contact, eventId: eventId.current, submittedContact: contactSignature })); }
+    pendingLead.current ||= {
+      ...lead, ...attribution.current, ...readMetaCookies(), event_id: eventId.current,
+      event_name: 'Lead', form_url: window.location.href, created_at: new Date().toISOString(),
+    };
+    try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ step, answers, contact, eventId: eventId.current, submittedContact: contactSignature, pendingLead: pendingLead.current })); }
     catch { setSaveIssue(true); }
     const payload = {
       schema_version: 1, event_id: eventId.current, created_at: new Date().toISOString(),
@@ -114,8 +124,8 @@ export default function Diagnostic() {
     setBusy(true);
     try {
       if (live) {
-        await submitLead(endpoint, { ...lead, event_id: payload.event_id });
-        try { track('diagnostic_submit', { event_id: payload.event_id, profile: answers.profile, segment: answers.segment, revenue: answers.revenue, representatives: answers.representatives, authority: answers.authority }); }
+        const receipt = await submitLead(endpoint, pendingLead.current);
+        try { trackConfirmedLead(receipt, { event_id: payload.event_id, profile: answers.profile, segment: answers.segment, revenue: answers.revenue, representatives: answers.representatives, authority: answers.authority }); }
         catch { /* Falhas de métricas não alteram o recebimento confirmado. */ }
       }
       completed.current = true;
