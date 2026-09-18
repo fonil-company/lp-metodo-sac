@@ -48,14 +48,14 @@ export function leadWebhookPayload(contact) {
 export async function submitLead(endpoint, payload, fetcher = fetch) {
   const response = await fetcher(endpoint, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload), signal: AbortSignal.timeout(20000)
+    body: JSON.stringify(payload), signal: AbortSignal.timeout(25000)
   });
   if (!response.ok) throw new Error('Não foi possível enviar. Suas respostas foram mantidas. Tente novamente.');
-  let receipt = { success: true };
+  let receipt;
   try {
     const body = await response.text();
     if (body) receipt = JSON.parse(body);
-  } catch { /* A resposta 2xx do webhook é a confirmação de recebimento. */ }
-  if (receipt?.success === false) throw new Error('O recebimento não foi confirmado. Suas respostas foram mantidas. Tente novamente.');
+  } catch { /* Respostas inválidas não confirmam a entrega. */ }
+  if (receipt?.success !== true) throw new Error('O recebimento não foi confirmado. Suas respostas foram mantidas. Tente novamente.');
   return receipt;
 }

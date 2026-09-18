@@ -21,6 +21,8 @@ function restore() {
       step: Number.isInteger(saved.step) ? Math.max(0, Math.min(contactStep, saved.step)) : 0,
       answers: sanitizeAnswers(Object.fromEntries(Object.entries(saved.answers || {}).filter(([, value]) => typeof value === 'string'))) as Answers,
       contact: Object.fromEntries(Object.keys(emptyContact).map(key => [key, typeof saved.contact?.[key] === 'string' ? saved.contact[key] : ''])) as Contact,
+      eventId: typeof saved.eventId === 'string' ? saved.eventId : undefined,
+      submittedContact: typeof saved.submittedContact === 'string' ? saved.submittedContact : '',
     };
   } catch { return null; }
 }
@@ -38,14 +40,17 @@ export default function Diagnostic() {
   const heading = useRef<HTMLHeadingElement>(null);
   const interacted = useRef(false);
   const milestones = useRef(new Set<number>());
-  const eventId = useRef(crypto.randomUUID());
+  const eventId = useRef(restored?.eventId || crypto.randomUUID());
+  const submittedContact = useRef(restored?.submittedContact || '');
+  const sending = useRef(false);
+  const completed = useRef(false);
   const attribution = useRef(attributionFrom(window.location.search));
   const questionStep = steps[Math.min(step, contactStep - 1)];
   const progress = Math.round((step / totalSteps) * 100);
 
   useEffect(() => {
     if (done) return;
-    try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ step, answers, contact })); }
+    try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ step, answers, contact, eventId: eventId.current, submittedContact: submittedContact.current })); }
     catch { setSaveIssue(true); }
   }, [step, answers, contact, done]);
   useEffect(() => {
@@ -83,7 +88,7 @@ export default function Diagnostic() {
   }
   async function finish(event: React.FormEvent) {
     event.preventDefault();
-    if (busy) return;
+    if (sending.current || completed.current) return;
     const validation = validateContact(contact) as Record<string, string>;
     if (live && !consent) validation.consent = 'Autorize o contato para enviar o diagnóstico.';
     setErrors(validation);
@@ -91,6 +96,12 @@ export default function Diagnostic() {
       requestAnimationFrame(() => document.querySelector<HTMLElement>('#diagnostic-panel [aria-invalid="true"]')?.focus());
       return;
     }
+    const lead = leadWebhookPayload(contact);
+    const contactSignature = JSON.stringify(lead);
+    if (submittedContact.current && submittedContact.current !== contactSignature) eventId.current = crypto.randomUUID();
+    submittedContact.current = contactSignature;
+    try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ step, answers, contact, eventId: eventId.current, submittedContact: contactSignature })); }
+    catch { setSaveIssue(true); }
     const payload = {
       schema_version: 1, event_id: eventId.current, created_at: new Date().toISOString(),
       answers: sanitizeAnswers(answers),
@@ -99,16 +110,19 @@ export default function Diagnostic() {
       consent: { contact: live && consent, privacy_url: live ? privacyUrl : null, timestamp: new Date().toISOString() },
       source: 'metodo-sac-landing-page'
     };
+    sending.current = true;
     setBusy(true);
     try {
       if (live) {
-        await submitLead(endpoint, leadWebhookPayload(payload.contact));
-        track('diagnostic_submit', { event_id: payload.event_id, profile: answers.profile, segment: answers.segment, revenue: answers.revenue, representatives: answers.representatives, authority: answers.authority });
+        await submitLead(endpoint, { ...lead, event_id: payload.event_id });
+        try { track('diagnostic_submit', { event_id: payload.event_id, profile: answers.profile, segment: answers.segment, revenue: answers.revenue, representatives: answers.representatives, authority: answers.authority }); }
+        catch { /* Falhas de métricas não alteram o recebimento confirmado. */ }
       }
+      completed.current = true;
       setSubmission(payload); setDone(true);
       try { sessionStorage.removeItem(STORAGE_KEY); } catch { /* Browser storage may be unavailable. */ }
     } catch (error) { setErrors({ submit: error instanceof Error ? error.message : 'Não foi possível enviar. Tente novamente.' }); }
-    finally { setBusy(false); }
+    finally { sending.current = false; setBusy(false); }
   }
   function renderQuestion(question: Question) {
     const invalid = Boolean(errors[question.id]);

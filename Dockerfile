@@ -15,7 +15,7 @@ ENV NODE_ENV=production \
     PORT=80
 
 COPY --from=build /app/dist ./dist
-COPY scripts/serve.mjs ./scripts/serve.mjs
+COPY scripts ./scripts
 
 EXPOSE 80
 

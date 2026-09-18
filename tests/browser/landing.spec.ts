@@ -3,10 +3,12 @@ import { test, expect } from '@playwright/test';
 test('desktop: complete shortened diagnostic with CRM submission', async ({ page }) => {
   const errors: string[] = [];
   let submittedLead: Record<string, string> | undefined;
+  const attempts: Record<string, string>[] = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.route('**/api/leads', async route => {
     submittedLead = route.request().postDataJSON();
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ success: true }) });
+    attempts.push(submittedLead!);
+    await route.fulfill({ status: attempts.length === 1 ? 502 : 200, contentType: 'application/json', body: JSON.stringify({ success: attempts.length > 1 }) });
   });
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto('/?utm_source=browser-test&utm_campaign=validation');
@@ -49,7 +51,16 @@ test('desktop: complete shortened diagnostic with CRM submission', async ({ page
   await panel.getByRole('combobox', { name: 'Estado' }).selectOption('SP');
   await panel.getByRole('checkbox').check();
   await panel.getByRole('button', { name: 'Finalizar meu diagnóstico SAC', exact: true }).click();
+  await expect(panel.getByRole('alert')).toContainText('Não foi possível enviar');
+  await expect(panel.getByRole('heading', { name: 'Diagnóstico recebido.' })).toHaveCount(0);
+  await page.reload();
+  await expect(panel.getByRole('textbox', { name: 'Nome completo' })).toHaveValue('Ana Silva');
+  await panel.getByRole('checkbox').check();
+  await panel.getByRole('button', { name: 'Finalizar meu diagnóstico SAC', exact: true }).click();
   await expect(panel.getByRole('heading', { name: 'Diagnóstico recebido.' })).toBeVisible();
+  expect(attempts).toHaveLength(2);
+  expect(attempts[0].event_id).toBeTruthy();
+  expect(attempts[1]).toEqual(attempts[0]);
   expect(submittedLead?.phone).toBe('+5511999999999');
   expect(submittedLead?.name).toBe('Ana Silva');
   expect(submittedLead?.company).toBe('Empresa Teste');

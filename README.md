@@ -25,11 +25,22 @@ Acesse http://localhost:5173. Para gerar a versão estática: `npm run build`. O
 
 ## Integração de leads
 
-Copie `.env.example` para `.env.local` e configure `LEAD_WEBHOOK_URL` com a URL completa e o token do receptor. Em produção, defina a mesma variável no ambiente de deploy. A URL fica somente no servidor e não é incluída no bundle do navegador.
+Copie `.env.example` para `.env.local` e configure `LEAD_WEBHOOK_URL` com a URL completa e o token do receptor atual (Supabase). Para entregar também ao CRM Fonil, configure `FONIL_CRM_WEBHOOK_URL` com a URL completa do webhook desse CRM. Em produção, defina essas variáveis no ambiente de deploy. As URLs ficam somente no servidor e não são incluídas no bundle do navegador.
 
-O formulário envia os leads ao webhook configurado por meio do proxy de mesma origem em `/api/leads`, evitando bloqueios de CORS no navegador. O POST JSON segue o contrato com `phone`, `name`, `company`, `email`, `city` e `state`. O telefone é normalizado com DDI antes do envio.
+O formulário envia os leads para `/api/leads`. O servidor faz um POST JSON para cada destino configurado, em paralelo. O Supabase continua recebendo `phone` com DDI, `name`, `company`, `email`, `city` e `state`. O CRM Fonil recebe `phone`, `name`, `email`, `city` e `state`, sem `company`; telefones brasileiros são enviados apenas com DDD e número, sem `+55`. O backend também aceita os campos opcionais `document`, `pipeline_stage` e `consultant` quando fornecidos; o formulário atual não os coleta.
 
-As respostas detalhadas do diagnóstico, o nome da empresa e a atribuição de mídia não fazem parte do contrato desse webhook e, por isso, não são enviados como campos extras. O evento `diagnostic_submit` só ocorre depois de uma resposta HTTP bem-sucedida. Erros ou timeout preservam as respostas e permitem nova tentativa com o mesmo ID de evento local.
+As respostas detalhadas do diagnóstico e a atribuição de mídia não são adicionadas aos contratos dos webhooks. A API retorna `{ "success": true }` e o evento `diagnostic_submit` ocorre apenas após todos os destinos configurados confirmarem o recebimento. Respostas HTTP de erro, JSON inválido ou uma negativa explícita (`success: false`, `ok: false` ou `error`) impedem a confirmação. Uma resposta vazia com HTTP 2xx do receptor continua sendo aceita.
+
+O `event_id` é usado internamente pela API, sem adicionar campos ao JSON dos CRMs. O navegador mantém esse ID nas novas tentativas e no recarregamento da aba; alterar os dados de contato inicia um novo envio. O servidor registra os destinos já confirmados e, nas tentativas seguintes, envia somente aos pendentes. Esse registro dura 24 horas, com limite de 10 mil envios por processo, e armazena apenas o hash dos dados e o status de entrega. Não é uma fila persistente: reiniciar o servidor, usar múltiplas réplicas ou receber um timeout após o CRM já gravar o lead pode resultar em duplicação. Garantia entre processos exige armazenamento compartilhado e idempotência nos receptores. Sem nova tentativa do visitante, uma falha parcial permanece pendente.
+
+### EasyPanel
+
+1. Preserve `LEAD_WEBHOOK_URL` com o endereço atual do Supabase.
+2. Adicione `FONIL_CRM_WEBHOOK_URL` com o endpoint completo do CRM Fonil em **Environment / Variáveis de ambiente**. Cole a URL como texto, sem a sintaxe de link do Markdown.
+3. Publique o código atualizado e faça um novo deploy usando o `Dockerfile` do repositório (porta interna 80). O comando do container inicia a API Node e serve a página compilada.
+4. Verifique o recebimento nos dois CRMs com um cadastro de teste autorizado.
+
+O mesmo handler de envio é usado em `npm run dev`, `npm run preview` e `npm start`. O arquivo legado `nginx.conf` não é usado pelo Dockerfile; hospedar somente os arquivos estáticos não inicia a API de entrega aos dois CRMs.
 
 ## Analytics
 

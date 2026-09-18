@@ -37,7 +37,9 @@ test('accepts a successful webhook response and rejects HTTP or explicit API err
   const result = await submitLead('https://example.test/leads', { phone: '+5511999999999' }, async (...args) => { calls.push(args); return { ok: true, text: async () => JSON.stringify({ success: true }) }; });
   assert.equal(result.success, true);
   assert.equal(JSON.parse(calls[0][1].body).phone, '+5511999999999');
-  assert.deepEqual(await submitLead('/leads', {}, async () => ({ ok: true, text: async () => '' })), { success: true });
+  for (const body of ['', 'not json', '{}', '{"success":false}', '{"ok":true}']) {
+    await assert.rejects(submitLead('/leads', {}, async () => ({ ok: true, text: async () => body })), /não foi confirmado/);
+  }
   await assert.rejects(submitLead('/leads', {}, async () => ({ ok: false })), /Não foi possível/);
   await assert.rejects(submitLead('/leads', {}, async () => ({ ok: true, text: async () => JSON.stringify({ success: false }) })), /não foi confirmado/);
 });
