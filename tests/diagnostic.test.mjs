@@ -32,6 +32,13 @@ test('maps contact data to the CRM webhook contract', () => {
     state: 'SP',
   });
 });
+test('includes the current diagnostic answers without overriding contact or tracking fields', () => {
+  const payload = leadWebhookPayload(contact, { profile: ' Indústria ', role: 'Diretor Comercial', phone: 'override', utm_source: 'override', budget: 'removed', segment: null });
+  assert.deepEqual(payload.answers, { profile: 'Indústria', role: 'Diretor Comercial' });
+  assert.equal(payload.phone, '+5511999999999');
+  assert.equal(payload.company, 'Empresa Teste');
+  assert.equal(payload.utm_source, undefined);
+});
 test('accepts a successful webhook response and rejects HTTP or explicit API errors', async () => {
   const calls = [];
   const result = await submitLead('https://example.test/leads', { phone: '+5511999999999' }, async (...args) => { calls.push(args); return { ok: true, text: async () => JSON.stringify({ success: true }) }; });

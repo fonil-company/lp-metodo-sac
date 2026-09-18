@@ -1,3 +1,5 @@
+import { diagnosticAnswers } from './lead-fields.mjs';
+
 export const STORAGE_KEY = 'sac-diagnostic-v1';
 export { attributionFrom } from './attribution.mjs';
 export function normalizePhone(value) {
@@ -32,7 +34,8 @@ export function sanitizeAnswers(answers) {
   for (const removedKey of ['bottleneck', 'infrastructure', 'crm', 'capacity', 'objective', 'timing', 'budget']) delete result[removedKey];
   return result;
 }
-export function leadWebhookPayload(contact) {
+export function leadWebhookPayload(contact, answers = {}) {
+  const diagnostic = diagnosticAnswers(answers);
   return {
     phone: normalizePhone(contact.phone || ''),
     name: contact.name?.trim() || '',
@@ -40,6 +43,7 @@ export function leadWebhookPayload(contact) {
     email: contact.email?.trim() || '',
     city: contact.city?.trim() || '',
     state: contact.state?.trim() || '',
+    ...(Object.keys(diagnostic).length ? { answers: diagnostic } : {}),
   };
 }
 export async function submitLead(endpoint, payload, fetcher = fetch) {

@@ -77,6 +77,8 @@ test(`desktop: complete diagnostic, analytics=${analytics}`, async ({ page }) =>
   expect(submittedLead?.phone).toBe('+5511999999999');
   expect(submittedLead?.name).toBe('Ana Silva');
   expect(submittedLead?.company).toBe('Empresa Teste');
+  expect(submittedLead?.answers).toMatchObject({ profile: 'Indústria', segment: 'Alimentos e bebidas', revenue: 'R$ 1 milhão a R$ 3 milhões/mês', employees: '51 a 100', source: 'Prospecção dos representantes', newClients: '1 a 5', authority: 'Sou o principal decisor', role: 'Diretor Comercial' });
+  expect(Object.keys(submittedLead?.answers || {})).toHaveLength(11);
   expect(submittedLead).toMatchObject({ utm_source: 'browser-test', utm_medium: 'paid', utm_campaign: 'coleção nova', utm_content: 'A+B', utm_term: 'teste', utm_id: 'campaign-1', fbclid: 'click-1', event_name: 'Lead' });
   expect(submittedLead?.landing_url).toContain('utm_source=browser-test');
   expect(submittedLead?.form_url).not.toContain('utm_source=');

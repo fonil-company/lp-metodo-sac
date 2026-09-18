@@ -37,10 +37,10 @@ test('compiled page delivers contact and attribution through the real API before
     expect(received).toHaveLength(0);
     await page.route('https://connect.facebook.net/**', route => route.fulfill({ contentType: 'application/javascript', body: '' }));
     await page.route('https://www.clarity.ms/**', route => route.fulfill({ contentType: 'application/javascript', body: '' }));
-    await page.addInitScript(({ step }) => {
+    await page.addInitScript(({ step, answers }) => {
       localStorage.setItem('sac-analytics-consent', 'accepted');
-      sessionStorage.setItem('sac-diagnostic-v1', JSON.stringify({ step, contact: { name: 'Teste Local', company: 'Teste', phone: '+5511999999999', email: 'teste@example.com', city: 'São Paulo', state: 'SP' } }));
-    }, { step: steps.length });
+      sessionStorage.setItem('sac-diagnostic-v1', JSON.stringify({ step, answers, contact: { name: 'Teste Local', company: 'Teste', phone: '+5511999999999', email: 'teste@example.com', city: 'São Paulo', state: 'SP' } }));
+    }, { step: steps.length, answers: Object.fromEntries(steps.flatMap(step => step.questions.map(question => [question.id, question.options?.[0] || 'Teste']))) });
     await page.goto(`http://127.0.0.1:${port}/?utm_source=meta&utm_medium=paid&utm_campaign=cole%C3%A7%C3%A3o+nova&utm_content=A%2BB&utm_term=teste`);
     const leads = () => page.evaluate(() => (window as any).fbq.queue.filter((call: any[]) => call[1] === 'Lead'));
     expect(await leads()).toHaveLength(0);
@@ -57,7 +57,8 @@ test('compiled page delivers contact and attribution through the real API before
     const fonil = received.filter(item => item.destination === '/fonil');
     expect(fonil).toHaveLength(2);
     expect(fonil[1].body).toEqual(fonil[0].body);
-    expect(fonil[1].body).toMatchObject({ name: 'Teste Local', phone: '11999999999', email: 'teste@example.com', city: 'São Paulo', state: 'SP', utm_source: 'meta', utm_medium: 'paid', utm_campaign: 'coleção nova', utm_content: 'A+B', utm_term: 'teste', event_name: 'Lead' });
+    expect(fonil[1].body).toMatchObject({ name: 'Teste Local', phone: '11999999999', email: 'teste@example.com', city: 'São Paulo', state: 'SP', utm_source: 'meta', utm_medium: 'paid', utm_campaign: 'coleção nova', utm_content: 'A+B', utm_term: 'teste', Empresa: 'Teste', 'Perfil da empresa': 'Indústria', Segmento: 'Alimentos e bebidas', 'Faturamento mensal': 'Até R$ 100 mil/mês', Colaboradores: '1 a 10', 'Equipe comercial': '1 a 5', 'Representantes comerciais': '1 a 5', 'Origem dos novos clientes': 'Prospecção dos representantes', 'Novos clientes por mês': 'Nenhum ou quase nenhum', 'Momento da operação': 'Vendemos bem para a carteira, mas abrimos poucos clientes novos', 'Papel na decisão': 'Sou o principal decisor', Cargo: 'Sócio / Proprietário' });
+    for (const key of ['answers', 'landing_url', 'form_url', 'created_at', '_fbp', 'event_name']) expect(fonil[1].body).not.toHaveProperty(key);
     const events = await leads();
     expect(events).toHaveLength(1);
     expect(events[0][3]).toEqual({ eventID: fonil[1].body.event_id });

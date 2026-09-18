@@ -36,12 +36,40 @@ async function setup(t, options = {}) {
 test('delivers each contract to two HTTP receivers and confirms both', async t => {
   const { received, post } = await setup(t);
   const tracking = { utm_source: 'meta', utm_medium: 'paid', utm_campaign: 'coleção nova', utm_content: 'A+B', utm_term: ' setor ', utm_id: 'campaign-1', fbclid: 'click-1', gclid: 'click-2', ad_id: 'ad-1', creative_id: 'creative-1', _fbc: 'fb.1.123.click', _fbp: 'fb.1.123.browser', landing_url: 'https://example.test/?utm_source=meta', referrer: 'https://example.test/ad', form_url: 'https://example.test/#form', created_at: '2026-09-18T12:00:00.000Z' };
-  assert.deepEqual(await post({ ...lead, document: '12345678000190', pipeline_stage: 'Qualificado', consultant: 'Teste', ...tracking, unrelated: 'drop-me' }), { status: 200, body: { success: true } });
+  const answers = { profile: 'Indústria', segment: 'Alimentos e bebidas', revenue: 'Até R$ 100 mil/mês', employees: '1 a 10', salesTeam: '1 a 5', representatives: '1 a 5', source: 'Indicações', newClients: '1 a 5', selfAssessment: 'Estamos crescendo e queremos acelerar a expansão', authority: 'Sou o principal decisor', role: 'Diretor Comercial' };
+  assert.deepEqual(await post({ ...lead, document: '12345678000190', pipeline_stage: 'Qualificado', consultant: 'Teste', ...tracking, answers: { ...answers, email: 'discard@example.com', utm_source: 'discard', arbitrary: 'drop-me' }, unrelated: 'drop-me' }), { status: 200, body: { success: true } });
   const contact = lead;
   const extra = { document: '12345678000190', pipeline_stage: 'Qualificado', consultant: 'Teste', ...tracking, event_name: 'Lead' };
-  assert.deepEqual(received.primary[0], { method: 'POST', contentType: 'application/json', payload: { ...contact, ...extra } });
+  assert.deepEqual(received.primary[0], { method: 'POST', contentType: 'application/json', payload: { ...contact, ...extra, answers } });
   const { company, ...fonil } = contact;
-  assert.deepEqual(received.fonil[0].payload, { ...fonil, phone: '11999999999', ...extra });
+  const { landing_url, referrer, form_url, created_at, _fbc, _fbp, event_name, ...fonilExtra } = extra;
+  assert.deepEqual(received.fonil[0].payload, {
+    ...fonil, phone: '11999999999', ...fonilExtra,
+    Empresa: 'Empresa Teste', 'Perfil da empresa': 'Indústria', Segmento: 'Alimentos e bebidas',
+    'Faturamento mensal': 'Até R$ 100 mil/mês', Colaboradores: '1 a 10', 'Equipe comercial': '1 a 5',
+    'Representantes comerciais': '1 a 5', 'Origem dos novos clientes': 'Indicações', 'Novos clientes por mês': '1 a 5',
+    'Momento da operação': 'Estamos crescendo e queremos acelerar a expansão', 'Papel na decisão': 'Sou o principal decisor', Cargo: 'Diretor Comercial',
+  });
+});
+
+test('direct entry keeps campaign absent and does not invent optional contact data', async t => {
+  const { received, post } = await setup(t);
+  assert.equal((await post({ ...lead, answers: { profile: 'Indústria', role: null, arbitrary: 'ignored' } })).status, 200);
+  const payload = received.fonil[0].payload;
+  assert.equal(payload.Empresa, lead.company);
+  assert.equal(payload['Perfil da empresa'], 'Indústria');
+  for (const key of ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'document', 'pipeline_stage', 'consultant', 'Cargo', 'answers', 'landing_url', 'form_url', 'created_at', '_fbp', 'event_name']) {
+    assert.equal(Object.hasOwn(payload, key), false, key);
+  }
+});
+
+test('changed diagnostic answers require a new event ID', async t => {
+  const { received, post } = await setup(t);
+  assert.equal((await post({ ...lead, answers: { profile: 'Indústria' } })).status, 200);
+  assert.equal((await post({ ...lead, answers: { profile: 'Distribuidora' } })).status, 409);
+  assert.equal((await post({ ...lead, event_id: 'changed-diagnostic', answers: { profile: 'Distribuidora' } })).status, 200);
+  assert.equal(received.fonil.length, 2);
+  assert.equal(received.fonil[1].payload['Perfil da empresa'], 'Distribuidora');
 });
 
 test('retries only the failed receiver in either direction', async t => {

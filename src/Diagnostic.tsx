@@ -24,7 +24,7 @@ function restore() {
       contact: Object.fromEntries(Object.keys(emptyContact).map(key => [key, typeof saved.contact?.[key] === 'string' ? saved.contact[key] : ''])) as Contact,
       eventId: typeof saved.eventId === 'string' ? saved.eventId : undefined,
       submittedContact: typeof saved.submittedContact === 'string' ? saved.submittedContact : '',
-      pendingLead: saved.pendingLead && typeof saved.pendingLead === 'object' && saved.pendingLead.event_id === saved.eventId ? saved.pendingLead as Record<string, string> : null,
+      pendingLead: saved.pendingLead && typeof saved.pendingLead === 'object' && saved.pendingLead.event_id === saved.eventId ? saved.pendingLead as Record<string, unknown> : null,
     };
   } catch { return null; }
 }
@@ -44,7 +44,7 @@ export default function Diagnostic() {
   const milestones = useRef(new Set<number>());
   const eventId = useRef(restored?.eventId || crypto.randomUUID());
   const submittedContact = useRef(restored?.submittedContact || '');
-  const pendingLead = useRef<Record<string, string> | null>(restored?.pendingLead || null);
+  const pendingLead = useRef<Record<string, unknown> | null>(restored?.pendingLead || null);
   const sending = useRef(false);
   const completed = useRef(false);
   const attribution = useRef(getAttribution());
@@ -99,7 +99,7 @@ export default function Diagnostic() {
       requestAnimationFrame(() => document.querySelector<HTMLElement>('#diagnostic-panel [aria-invalid="true"]')?.focus());
       return;
     }
-    const lead = leadWebhookPayload(contact);
+    const lead = leadWebhookPayload(contact, answers);
     const contactSignature = JSON.stringify(lead);
     if (submittedContact.current && submittedContact.current !== contactSignature) {
       eventId.current = crypto.randomUUID();

@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
-import { attributionFields } from '../src/lib/attribution.mjs';
+import { attributionFields, campaignFields } from '../src/lib/attribution.mjs';
+import { diagnosticAnswers, diagnosticLabels } from '../src/lib/lead-fields.mjs';
 
 const fields = ['phone', 'name', 'company', 'email', 'document', 'city', 'state', 'pipeline_stage', 'consultant'];
 const trackingFields = [...attributionFields, 'event_id', 'form_url', 'created_at', '_fbc', '_fbp'];
@@ -11,10 +12,17 @@ export function createLeadHandler({ primaryUrl, fonilUrl, fetcher = fetch, now =
   const destinations = [
     { name: 'primary', url: primaryUrl?.trim(), adapt: lead => lead },
     { name: 'fonil', url: fonilUrl?.trim(), adapt: lead => {
-      const { company, ...contact } = lead;
+      const contact = Object.fromEntries([...fields.filter(key => key !== 'company'), ...campaignFields, 'event_id']
+        .filter(key => typeof lead[key] === 'string' && lead[key].trim())
+        .map(key => [key, lead[key]]));
       const digits = contact.phone.replace(/\D/g, '');
       // Brazilian numbers use DDD + number, as in the Fonil contract.
       contact.phone = /^55\d{10,11}$/.test(digits) ? digits.slice(2) : digits;
+      // Fonil displays additional flat fields in Observacoes; use readable labels.
+      if (lead.company) contact.Empresa = lead.company;
+      for (const [key, label] of Object.entries(diagnosticLabels)) {
+        if (lead.answers?.[key]) contact[label] = lead.answers[key];
+      }
       return contact;
     } },
   ].filter(destination => destination.url);
@@ -32,6 +40,8 @@ export function createLeadHandler({ primaryUrl, fonilUrl, fetcher = fetch, now =
       if (typeof submitted[key] === 'string' && submitted[key].trim()) lead[key] = submitted[key];
     }
     lead.event_name = 'Lead';
+    const answers = diagnosticAnswers(submitted.answers);
+    if (Object.keys(answers).length) lead.answers = answers;
     const fingerprint = createHash('sha256').update(JSON.stringify(lead)).digest('hex');
     // Payload hash also protects retries from pages opened before this deployment.
     const key = submitted.event_id ? `event:${submitted.event_id}` : `payload:${fingerprint}`;
